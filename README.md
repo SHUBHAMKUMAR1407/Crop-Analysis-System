@@ -1,104 +1,295 @@
 # Crop Analysis System
 
-## Complete Flow
+An AI-powered crop health analysis platform that combines pest detection and plant disease classification in a single application. Users can upload a plant image through the web interface and receive pest bounding boxes, pest severity, disease status, and visual overlays through a FastAPI inference service.
 
-### Dataset Exploration
-We explored multiple datasets including **Plant Village** and **IP102**, but selected the **CCMT Dataset (Cashew, Corn, Maize, Tomato)** sourced from **Kaggle**. This dataset was unique because it provided comprehensive data for both:
--   **Pest Detection**: Included annotated bounding boxes for object localization.
--   **Disease Detection**: High-quality leaf images categorized by disease type.
+## Overview
 
-### Model Experiments
-We conducted extensive experiments to find the optimal architecture for each task.
+Crop damage caused by pests and plant diseases is difficult to identify early through manual inspection alone. This project provides a unified computer-vision workflow for:
 
-#### 🐛 Pest Detection
-For pests, we required object detection (bounding boxes).
--   **Model**: **YOLOv11 (Small)**
--   **Training**: Iterated on the CCMT dataset to accurately localize pests.
+- Detecting and localizing pests with bounding boxes.
+- Classifying plant diseases from leaf images.
+- Returning severity indicators for both pest activity and disease presence.
+- Displaying predictions and overlays in a browser-based interface.
 
-#### 🍃 Disease Classification
-We experimented with three different architectures for disease diagnosis:
+## Key Features
 
-1.  **U-Net (Segmentation)**
-    -   Accuracy: ~90%
-    -   Result: Dropped (Segmentation was computationally expensive and unnecessary for classification).
-2.  **DenseNet (Deep CNN)**
-    -   Accuracy: 95-97%
-    -   Result: Excellent performance, but slightly heavier.
-3.  **EfficientNet-B0 (Efficient CNN)**
-    -   Accuracy: **98%**
-    -   Result: **Selected as Final Model**. It offered the best trade-off between speed and accuracy.
+- **Dual AI analysis:** pest detection and disease classification from one image.
+- **Pest localization:** returns the number, class, confidence, and coordinates of detected pests.
+- **Disease inference:** classifies supported plant-health categories using EfficientNet-B0.
+- **Interactive frontend:** React and TypeScript interface with image upload and canvas visualization.
+- **REST API:** FastAPI endpoint for programmatic image analysis.
+- **Training utilities:** scripts for model training, dataset preparation, and API/model verification.
+- **Container support:** Dockerfiles are included for backend and frontend deployment workflows.
 
-### Final Model Choices
+## System Architecture
 
-#### 1. Pest Detection: YOLOv11
--   **Model**: YOLOv11 (Small)
--   **Function**: Detects and localizes pest species on leaves using bounding boxes.
+```text
+User uploads image
+        |
+        v
+React + TypeScript frontend
+        |
+        |  POST /analyze
+        v
+FastAPI backend
+        |
+        +--> EfficientNet-B0  -> Disease classification
+        |
+        +--> YOLO detector     -> Pest detection and bounding boxes
+        |
+        v
+Combined JSON response + visual overlays
+```
 
-#### 2. Disease Classification: EfficientNet
--   **Model**: EfficientNet-B0
--   **Function**: Classifies crop diseases at the image level with 98% accuracy.
+## Technology Stack
 
-### Deployment Architecture
-The complete application is deployed with a modern stack:
--   **Frontend**: Built with **React** for a responsive user interface.
--   **Backend**: Powered by **FastAPI** for high-performance API endpoints and model inference.
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite, HTML Canvas |
+| Backend | Python, FastAPI, Uvicorn, Pydantic |
+| Disease model | PyTorch, TorchVision, EfficientNet-B0 |
+| Pest model | Ultralytics YOLO |
+| Image processing | Pillow, NumPy, OpenCV |
+| Deployment | Docker |
 
----
+## Model Summary
 
-# Detailed Project Report
+### Pest Detection
 
-## Abstract
-Agriculture remains a critical pillar of global food production, where pests and plant diseases represent two of the most damaging biological threats affecting yield output and economic sustainability. Traditional crop diagnosis heavily relies on manual inspection, resulting in delayed treatment and misdiagnosis. This report presents an Artificial Intelligence (AI)-based dual diagnostic system integrating object detection and image classification to simultaneously identify pests through bounding box localization and diagnose leaf diseases in real time. The system employs **YOLOv11** for pest object detection and **EfficientNet-B0** for leaf disease classification using the CCMT dataset. The proposed framework achieves approximately **0.85 mAP@0.5** for pest localization and nearly **98% accuracy** for disease classification, demonstrating strong practical potential for early detection and farmer decision support.
+The pest-analysis service uses an Ultralytics YOLO model to detect pest objects in an image. Each detection includes:
 
-## 1. Introduction
-Agriculture is constantly exposed to biological threats, primarily caused by pests and plant pathogens. These threats directly affect crop health and productivity, leading to reduced yield quantity and significant financial losses for farmers. Early-stage pest activity often goes unnoticed due to their small size, natural camouflage, and rapid movement. Similarly, visual symptoms of leaf diseases during initial stages appear highly similar, making manual diagnosis difficult and error-prone.
+- Pest label and class ID.
+- Confidence score.
+- Bounding box in `[x, y, width, height]` format, where `x` and `y` represent the top-left corner.
+- Overall severity based on the number of detected pests.
 
-Deep learning technologies have recently demonstrated impressive capabilities in agricultural image analysis. However, most existing systems focus exclusively on either classification or detection. This project addresses this limitation by developing a unified framework that performs both tasks simultaneously. By offering real-time inference and visual explanations, the system provides practical value for farmers and agricultural advisors.
+### Disease Classification
 
-## 2. Problem Statement
-Traditional crop diagnosis methods experience multiple limitations:
-*   Rely on costly expert knowledge
-*   Manual inspection delays treatment
-*   Focus on only one type of threat
-*   No pest localization output
-*   High probability of human error
+The disease-analysis service uses a custom EfficientNet-B0 classifier with 224 × 224 image preprocessing and ImageNet normalization. The deployed class list includes healthy and diseased categories for pepper, potato, and tomato leaves.
 
-Early detection is essential for minimizing crop damage; therefore, a dual diagnostic system becomes necessary for modern precision agriculture.
+The classifier returns a disease severity label and a response-compatible mask field. The current implementation does not generate a pixel-level segmentation mask; the mask value is therefore empty unless a segmentation service is added.
 
-## 3. Objectives
-The primary objectives of the proposed system are:
-*   Detect pests and localize them using bounding boxes
-*   Classify leaf diseases accurately
-*   Provide real-time inference for field use
-*   Maintain lightweight design suitable for edge deployment
+## Project Structure
 
-## 4. Methodology
+```text
+Crop-Analysis-System/
+├── backend/
+│   ├── main.py                         # FastAPI application and /analyze endpoint
+│   ├── schemas.py                      # Pydantic request/response schemas
+│   ├── requirements.txt                # Python dependencies
+│   ├── services/
+│   │   ├── disease_service.py          # EfficientNet inference service
+│   │   └── pest_service.py             # YOLO inference service
+│   ├── train_disease_segmentation.py   # Disease-model training utility
+│   ├── train_pest_yolo.py              # Pest-model training utility
+│   ├── prepare_plant_dataset.py        # Dataset preparation utility
+│   ├── verify_api.py                   # API verification script
+│   └── verify_yolo11.py                # YOLO verification script
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                     # Main application screen
+│   │   └── components/
+│   │       ├── ImageUpload.tsx         # Image upload control
+│   │       └── ResultsOverlay.tsx      # Canvas-based prediction overlay
+│   ├── package.json                    # Frontend dependencies and scripts
+│   └── vite.config.ts                 # Vite configuration
+└── README.md
+```
 
-### 4.1 YOLOv11 Pest Detection
-YOLOv11 provides real-time object detection through single-stage detection architecture. The **Small** variant was used, offering compact size and fast inference. The model produces bounding boxes along with confidence scores marking exact pest locations on crop images.
+## Requirements
 
-### 4.2 EfficientNet-B0 Classification
-EfficientNet scales depth, width, and resolution in a compound manner. Three architectures were tested:
-*   **U-Net**: Segmentation, unnecessary complexity.
-*   **DenseNet201**: Strong accuracy, more computational load.
-*   **EfficientNet-B0**: Best accuracy and efficiency.
+- Python 3.9 or later.
+- Node.js 18 or later and npm.
+- A YOLO pest model file.
+- An EfficientNet disease-classification checkpoint.
+- Optional: CUDA-compatible GPU for faster inference and training.
 
-EfficientNet-B0 achieved **98% accuracy** and outperformed alternative approaches while remaining operational for real-time classification.
+## Installation
 
-## 5. Results
+### 1. Clone the repository
 
-### 5.1 YOLOv11 Pest Detection
-*   **mAP@0.5**: 0.85
-*   **mAP@0.5–0.95**: 0.52
-*   **Precision**: 0.84
-*   **Recall**: 0.80
+```bash
+git clone <repository-url>
+cd Crop-Analysis-System
+```
 
-These results reflect strong localization ability even for small and camouflaged pests.
+### 2. Set up the backend
 
-### 5.2 EfficientNet-B0 Disease Classification
-*   **Accuracy**: ≈ 98%
-*   **Latency**: Low inference latency
-*   **Hardware**: Minimal GPU requirements
+Windows PowerShell:
 
-## 6. Conclusion
-The proposed AI system effectively detects biological vectors and plant diseases simultaneously. Combining **YOLOv11** and **EfficientNet-B0** results in strong detection performance and high classification accuracy. This dual-engine framework supports early intervention, provides visual evidence to farmers, and helps prevent irreversible crop failure.
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Linux or macOS:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 3. Add model checkpoints
+
+Place the model files at the paths expected by `backend/main.py`:
+
+```text
+backend/
+├── efficientnet_plant_best.pt
+└── models/
+    └── yolov8s_pest.pt
+```
+
+If the checkpoints are stored elsewhere, update `DISEASE_MODEL_PATH` and `PEST_MODEL_PATH` in `backend/main.py`.
+
+### 4. Start the backend
+
+From the `backend` directory:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at `http://localhost:8000`.
+
+Interactive API documentation is available at:
+
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### 5. Set up and start the frontend
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the Vite URL shown in the terminal, normally `http://localhost:5173`.
+
+For a production build:
+
+```bash
+npm run build
+npm run preview
+```
+
+## API Reference
+
+### `GET /`
+
+Returns a basic backend health response.
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "message": "Crop Analysis Backend Running"
+}
+```
+
+### `POST /analyze`
+
+Accepts a plant image as multipart form data.
+
+#### Request
+
+```bash
+curl -X POST "http://localhost:8000/analyze" \
+  -F "file=@path/to/plant-image.jpg"
+```
+
+#### Response
+
+```json
+{
+  "disease": {
+    "diseased_area_percent": 100.0,
+    "severity": "High (Tomato Early blight)",
+    "mask_shape": [1024, 768],
+    "mask_b64": ""
+  },
+  "pest": {
+    "count": 2,
+    "severity": "Low",
+    "boxes": [
+      {
+        "box": [120.5, 84.2, 75.0, 61.0],
+        "label": "pest",
+        "confidence": 0.91,
+        "class_id": 0
+      }
+    ]
+  }
+}
+```
+
+## Training Utilities
+
+The repository includes scripts for model development:
+
+```bash
+python backend/prepare_plant_dataset.py
+python backend/train_disease_segmentation.py
+python backend/train_pest_yolo.py
+python backend/verify_api.py
+python backend/verify_yolo11.py
+```
+
+Training scripts may require additional dataset files and directory structures that are not included in this repository. Configure dataset paths and training parameters before running them.
+
+## Frontend Commands
+
+Run these commands from `frontend/`:
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Type-check and create a production build |
+| `npm run lint` | Run ESLint checks |
+| `npm run preview` | Preview the production build locally |
+
+## Model Evaluation
+
+The project experiments documented in the training artifacts reported the following approximate results:
+
+| Task | Model | Reported metric |
+| --- | --- | --- |
+| Pest detection | YOLO small variant | mAP@0.5: ~0.85 |
+| Disease classification | EfficientNet-B0 | Accuracy: ~98% |
+
+These values depend on the dataset split, checkpoint, preprocessing pipeline, and runtime environment. They should be revalidated before production use.
+
+## Limitations and Production Considerations
+
+- Model checkpoints are not included in the repository and must be supplied separately.
+- The frontend currently calls `http://localhost:8000/analyze` directly; configure an environment-based API URL for deployment.
+- CORS is currently permissive for local development and should be restricted in production.
+- Disease area percentage is currently a placeholder for classification-only inference.
+- Predictions are intended for research and decision support, not as a replacement for professional agricultural diagnosis.
+- Production deployment should add authentication, file-size validation, structured logging, monitoring, and rate limiting.
+
+## Roadmap
+
+- Add environment-based frontend and backend configuration.
+- Add true disease segmentation and pixel-level mask generation.
+- Add confidence thresholds and user-configurable inference settings.
+- Add automated tests and CI validation.
+- Add persistent prediction history and downloadable reports.
+
+## License
+
+Add the project license and dataset attribution here before public distribution.
+
+## Acknowledgements
+
+This project builds on open-source tools and research in deep learning, image classification, and object detection, including PyTorch, TorchVision, Ultralytics, FastAPI, React, and Vite.
