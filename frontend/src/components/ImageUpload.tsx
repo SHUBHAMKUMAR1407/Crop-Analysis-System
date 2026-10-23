@@ -1,16 +1,38 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, DragEvent } from 'react';
 import '../App.css'; // Importing global styles or we could make module css
 
 interface Props {
     onImageSelect: (file: File) => void;
+    onValidationError: (message: string) => void;
     isLoading: boolean;
 }
 
-const ImageUpload: React.FC<Props> = ({ onImageSelect, isLoading }) => {
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            onImageSelect(e.target.files[0]);
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const ImageUpload: React.FC<Props> = ({ onImageSelect, onValidationError, isLoading }) => {
+    const processFile = (file: File | undefined) => {
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            onValidationError('Please select a JPG, PNG, or another image file.');
+            return;
         }
+
+        if (file.size > MAX_FILE_SIZE) {
+            onValidationError('Image size must be 5 MB or less.');
+            return;
+        }
+
+        onImageSelect(file);
+    };
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        processFile(e.target.files?.[0]);
+    };
+
+    const handleDrop = (e: DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        if (!isLoading) processFile(e.dataTransfer.files[0]);
     };
 
     return (
@@ -18,6 +40,8 @@ const ImageUpload: React.FC<Props> = ({ onImageSelect, isLoading }) => {
             <label
                 htmlFor="image-upload"
                 className={`upload-label ${isLoading ? 'disabled' : ''}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <svg className="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -17,6 +17,7 @@ Crop damage caused by pests and plant diseases is difficult to identify early th
 - **Pest localization:** returns the number, class, confidence, and coordinates of detected pests.
 - **Disease inference:** classifies supported plant-health categories using EfficientNet-B0.
 - **Interactive frontend:** React and TypeScript interface with image upload and canvas visualization.
+- **Safe image upload:** supports drag-and-drop and rejects non-image files or images larger than 5 MB before analysis.
 - **REST API:** FastAPI endpoint for programmatic image analysis.
 - **Training utilities:** scripts for model training, dataset preparation, and API/model verification.
 - **Container support:** Dockerfiles are included for backend and frontend deployment workflows.

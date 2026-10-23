@@ -40,6 +40,13 @@ function App() {
         setError(null);
     };
 
+    const handleUploadError = (message: string) => {
+        setSelectedImage(null);
+        setPreviewUrl(null);
+        setResult(null);
+        setError(message);
+    };
+
     const handleAnalyze = async () => {
         if (!selectedImage) return;
 
@@ -88,7 +95,11 @@ function App() {
                 <div className="left-column">
                     <div className="card">
                         <h2 className="card-title">1. Upload Plant Image</h2>
-                        <ImageUpload onImageSelect={handleImageSelect} isLoading={loading} />
+                        <ImageUpload
+                            onImageSelect={handleImageSelect}
+                            onValidationError={handleUploadError}
+                            isLoading={loading}
+                        />
 
                         {selectedImage && (
                             <div className="btn-container">
