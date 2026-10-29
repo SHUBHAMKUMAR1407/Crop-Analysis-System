@@ -1,6 +1,6 @@
 # Crop Analysis System
 
-An AI-powered crop health analysis platform that combines pest detection and plant disease classification in a single application. Users can upload a plant image through the web interface and receive pest bounding boxes, pest severity, disease status, and visual overlays through a FastAPI inference service.
+An AI-powered crop health analysis platform that combines pest detection and plant disease classification in a single application. Users can upload a plant image through the web interface and receive pest bounding boxes, pest severity, disease status, and visual overlays through a FastAPI inference service..
 
 ## Overview
 
